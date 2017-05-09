@@ -1,55 +1,77 @@
 package main
 
 import (
-	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
+	"os"
+	"time"
 )
 
 func main() {
+	configFile, err := ioutil.ReadFile("config.json")
+	if err != nil {
+		log.Fatalf("read: %v", err)
+	}
+
+	config := new(config)
+	err = json.Unmarshal(configFile, config)
+	if err != nil {
+		log.Fatalf("parse: %v", err)
+	}
+
+	rprt := make(chan report)
+
+	buns := make(map[string]*bunny)
+	for i := range config.Cmds {
+		buns[config.Cmds[i].Id] = &bunny{
+			id:        config.Cmds[i].Id,
+			rprt:      rprt,
+			cmd:       config.Cmds[i].Cmd,
+			arguments: config.Cmds[i].Arguments,
+			slp:       time.Duration(config.Cmds[i].Delta) * time.Second,
+		}
+	}
+
+	bunnyhole := &hole{
+		buns: buns,
+		rprt: rprt,
+	}
+
+	bunnyhole.orchestrate()
 }
 
-type userinput int
+type config struct {
+	Cmds []cmd `json:"cmds"`
+}
 
-const (
-	resume userinput = iota
-	stop
-)
-
-type state int
-
-const (
-	running state = iota
-	paused
-)
+type cmd struct {
+	Cmd       string   `json:"cmd"`
+	Arguments []string `json:"arguments"`
+	Id        string   `json:"id"`
+	Delta     int      `json:"delta"`
+}
 
 type hole struct {
-	input userinput
-	buns  []bunny
-	rprt  chan report
+	buns map[string]*bunny
+	rprt chan report
+}
 
-	cancel context.CancelFunc
-	remote chan struct{}
+func (h *hole) remote() {
+	// wait for user input
+	_, _ = os.Stdin.Read(make([]byte, 1))
 }
 
 func (h *hole) orchestrate() {
-	ctx, cancelfunc := context.WithCancel(context.Background())
-	h.cancel = cancelfunc
-
-	for _, e := range h.buns {
-		go e.setup(ctx)
+	for i := range h.buns {
+		go h.buns[i].start()
 	}
 
 	for rprt := range h.rprt {
-		for _, e := range h.buns {
-			e.pause()
-		}
-
 		rprt.communicate()
-		<-h.remote
+		h.remote()
 
-		for _, e := range h.buns {
-			e.resume()
-		}
+		go h.buns[rprt.id].start()
 	}
 }
 
@@ -59,5 +81,5 @@ type report struct {
 }
 
 func (rprt *report) communicate() {
-	log.Println(rprt.msg)
+	log.Println("error", rprt.msg)
 }
