@@ -69,8 +69,11 @@ func (h *hole) orchestrate() {
 
 	for rprt := range h.rprt {
 		rprt.communicate()
-		h.remote()
+		if rprt.err == nil {
+			continue
+		}
 
+		h.remote()
 		go h.buns[rprt.id].start()
 	}
 }
@@ -78,8 +81,13 @@ func (h *hole) orchestrate() {
 type report struct {
 	id  string
 	msg string
+	err error
 }
 
 func (rprt *report) communicate() {
-	log.Println("error", rprt.msg)
+	log.Println(rprt.msg)
+
+	if rprt.err != nil {
+		log.Println("error", rprt.err)
+	}
 }
