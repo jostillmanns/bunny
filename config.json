@@ -4,13 +4,13 @@
 			"cmd": "php",
 			"arguments": ["testscript.php"],
 			"id": "Test Script 1",
-			"Delta": 3
+			"delta": 3
 		},
 		{
 			"cmd": "php",
 			"arguments": ["testscript2.php"],
 			"id": "Test Script 2",
-			"Delta": 3
+			"delta": 3
 		}
 	]
 }
