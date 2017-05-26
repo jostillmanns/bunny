@@ -6,10 +6,14 @@ import (
 	"log"
 	"os"
 	"time"
+	"flag"
 )
 
 func main() {
-	configFile, err := ioutil.ReadFile("config.json")
+	configpath := flag.String("config", "config.json", "path to the config")
+	flag.Parse()
+
+	configFile, err := ioutil.ReadFile(*configpath)
 	if err != nil {
 		log.Fatalf("read: %v", err)
 	}
